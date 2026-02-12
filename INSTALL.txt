@@ -1,0 +1,129 @@
+Music DLP - Installation Guide
+===============================
+
+A YouTube playlist downloader with AI-powered metadata cleaning
+and Spotify-compatible output.
+
+
+QUICK START
+-----------
+1. Install FFmpeg (see below)
+2. Install Ollama + AI model (see below)
+3. Export your YouTube cookies (see below)
+4. Run MusicDLP.exe
+
+
+STEP 1: Install FFmpeg (REQUIRED)
+----------------------------------
+FFmpeg is needed to convert audio files to MP3/M4A format.
+
+Option A - Portable (recommended):
+  1. Go to https://www.gyan.dev/ffmpeg/builds/
+  2. Download "ffmpeg-release-essentials.zip"
+  3. Extract the archive
+  4. Copy ffmpeg.exe and ffprobe.exe into the "ffmpeg" folder
+     next to MusicDLP.exe
+
+Option B - System install:
+  1. Download FFmpeg from https://ffmpeg.org/download.html
+  2. Add the bin/ folder to your system PATH
+
+
+STEP 2: Install Ollama + AI Model (RECOMMENDED)
+-------------------------------------------------
+Ollama runs AI models locally to clean up messy YouTube titles.
+Without it, you can still download and convert music, but you'll
+need to edit titles manually.
+
+  1. Download Ollama from https://ollama.com/download
+  2. Install and launch it (it runs in the background)
+  3. Open a terminal and pull at least one model:
+
+     ollama pull gemma3:12b
+
+     (This downloads ~8GB. It's the most accurate model for
+     Japanese music metadata.)
+
+  4. Ollama must be running whenever you use AI processing
+     in Music DLP.
+
+Optional additional models:
+     ollama pull qwen3:14b
+     ollama pull qwen2.5:7b
+
+
+STEP 3: Export YouTube Cookies (REQUIRED FOR DOWNLOADS)
+--------------------------------------------------------
+YouTube blocks automated downloads without authentication.
+You need to export your browser cookies so yt-dlp can use them.
+
+  1. Install the "Get cookies.txt LOCALLY" extension:
+     - Chrome: Search for it in the Chrome Web Store
+     - Firefox: Search for it in Firefox Add-ons
+
+  2. Go to youtube.com and make sure you're logged in
+
+  3. Click the extension icon and export cookies
+
+  4. Save the file as "cookies.txt" next to MusicDLP.exe
+     (or anywhere - you can set the path in Settings)
+
+
+STEP 4: Run MusicDLP.exe
+--------------------------
+Double-click MusicDLP.exe to launch the application.
+
+On first run, it will automatically create:
+  - config.ini   (your settings)
+  - music_dlp.db (song database)
+  - downloads/   (downloaded and converted files)
+  - logs/        (application logs)
+
+
+FOLDER STRUCTURE
+-----------------
+After setup, your folder should look like this:
+
+  MusicDLP/
+    MusicDLP.exe
+    ffmpeg/
+      ffmpeg.exe        <-- you add this
+      ffprobe.exe       <-- you add this
+    cookies.txt         <-- you add this
+    config.ini          (auto-created)
+    music_dlp.db        (auto-created)
+    downloads/
+      raw/              (downloaded .opus files)
+      final/
+        mp3/            (converted MP3 files for Spotify)
+        m4a/            (converted M4A files for archival)
+    logs/
+
+
+IMPORTING TO SPOTIFY
+---------------------
+  1. Open Spotify desktop app
+  2. Go to Settings (gear icon)
+  3. Scroll to "Local Files"
+  4. Enable "Show Local Files"
+  5. Click "Add a source" and select the downloads/final/mp3/ folder
+  6. Your songs will appear under Local Files in your library
+
+
+TROUBLESHOOTING
+----------------
+- "FFmpeg not found" error:
+  Make sure ffmpeg.exe is in the ffmpeg/ folder or in your system PATH.
+
+- "Ollama is not running" warning:
+  Start Ollama from the system tray or run "ollama serve" in a terminal.
+
+- Downloads fail with 403 errors:
+  Your cookies may have expired. Re-export them from your browser.
+
+- App crashes on startup:
+  Check crash.log in the app folder for details.
+
+- No album art in Spotify:
+  Use the MP3 files (downloads/final/mp3/), not M4A.
+  Spotify doesn't display album art for M4A local files.

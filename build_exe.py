@@ -99,11 +99,11 @@ def create_distribution(dist_app_dir: Path):
     )
     print(f"  Created: ffmpeg/PUT_FFMPEG_HERE.txt")
 
-    # Copy README if it exists
-    readme_src = PROJECT_DIR / "README.md"
-    if readme_src.exists():
-        shutil.copy2(readme_src, dist_app_dir / "README.txt")
-        print(f"  Copied: README.txt")
+    # Copy install instructions
+    install_src = PROJECT_DIR / "INSTALL.txt"
+    if install_src.exists():
+        shutil.copy2(install_src, dist_app_dir / "INSTALL.txt")
+        print(f"  Copied: INSTALL.txt")
 
     print(f"\nDistribution ready at: {dist_app_dir}")
     print(f"\nNext steps:")
