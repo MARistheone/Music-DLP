@@ -4,8 +4,6 @@ __pycache__/
 *$py.class
 *.so
 *.egg-info/
-dist/
-build/
 *.egg
 
 # Virtual environment
@@ -13,15 +11,18 @@ venv/
 .venv/
 env/
 
-# IDE
+# IDE / workspace
 .vscode/
 .idea/
 *.swp
 *.swo
+*.code-workspace
 
 # Project runtime files
 music_dlp.db
 cookies.txt
+config.ini
+crash.log
 logs/
 downloads/
 nul
@@ -35,5 +36,38 @@ Thumbs.db
 Desktop.ini
 .DS_Store
 
-# Test data
+# Test / diagnostic scripts (local dev only)
+test_*.py
+run_all_tests.py
+check_*.py
+cleanup_*.py
+diagnose_*.py
+fix_*.py
+find_*.py
+compare_*.bat
+missing_methods_report.txt
 test_data/
+
+# Development session docs (local only)
+HANDOFF*.md
+PHASE*_README.md
+PHASE*_SUMMARY.md
+PHASE*_START_PROMPT.md
+SESSION_*.md
+BUGFIX_*.md
+NEXT_SESSION*.md
+TROUBLESHOOTING.md
+TESTING_GUIDE.md
+DEPLOY_*.md
+REVIEW_*.md
+VRAM_*.md
+MODEL_*.md
+AI_IMPROVEMENTS*.md
+ATTRIBUTEERROR_*.md
+V3_PROMPTS_RESULTS.md
+EXTERNAL_AI_HANDOFF.md
+
+# Old prompt versions (local only)
+ai/prompts_v1_backup.py
+ai/prompts_v2.py
+ai/prompts_v3.py

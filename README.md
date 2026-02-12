@@ -1,224 +1,91 @@
-# Music DLP - YouTube Playlist Downloader with AI Metadata Cleaning
+# Music DLP
 
-Modern GUI application for downloading YouTube playlist songs, cleaning their metadata with AI, and converting to Spotify-compatible formats.
+A Windows desktop app that downloads songs from YouTube playlists, cleans up their metadata with AI, and exports them as Spotify-compatible MP3 files with album art.
+
+Built for people with YouTube playlists full of Japanese covers, VTuber songs, and other music that isn't on Spotify.
 
 ## Features
 
-- ✅ Download from YouTube playlists using yt-dlp (with bot detection avoidance)
-- ✅ AI-powered title cleaning using 3 Ollama models (Gemma3:12B, Qwen3:14B, Qwen2.5:7B)
-- ✅ Batch review workflow for approving AI-generated titles
-- ✅ Convert to both MP3 (Spotify) and M4A (archival) formats
-- ✅ Embed 300x300px thumbnails and metadata
-- ✅ Modern CustomTkinter GUI with light/dark mode
-- ✅ Comprehensive logging for debugging
-- ✅ Package as standalone .exe (planned)
+- **YouTube playlist downloading** via yt-dlp with bot detection avoidance
+- **AI-powered metadata cleaning** - fixes messy YouTube titles into proper `Artist - Title` format using local Ollama models
+- **Batch review workflow** - review AI suggestions side-by-side, edit manually, or regenerate
+- **Dual output** - MP3 (320kbps, for Spotify) + M4A (320kbps AAC, for archival)
+- **Album art** - embeds 300x300 thumbnails into every file
+- **Modern GUI** - CustomTkinter with light/dark mode
 
-## Project Status
+## Quick Start (Pre-built exe)
 
-**Current Phase**: Phase 1 Complete (Core Infrastructure)
-**Next Phase**: Phase 2 (Download System)
+1. Download the latest release from [Releases](../../releases)
+2. Extract the zip
+3. Read `INSTALL.txt` inside for setup (FFmpeg, Ollama, cookies)
+4. Run `MusicDLP.exe`
 
-### Completed ✅
-- SQLite database with comprehensive schema
-- Configuration management (INI + database sync)
-- Logging system (colored console + file rotation)
-- Directory structure
-- Requirements and dependencies
-
-### In Progress ⏳
-- yt-dlp integration with bot avoidance
-- Playlist metadata extraction
-- Thumbnail processing
-
-### Planned 📅
-- AI title processing with Ollama
-- FFmpeg audio conversion
-- CustomTkinter GUI
-- PyInstaller packaging
-
-## Installation
-
-### Prerequisites
-- Python 3.10+
-- FFmpeg (must be in PATH)
-- Ollama (with models: gemma3:12b, qwen3:14b, qwen2.5:7b)
-
-### Setup
+## Quick Start (From source)
 
 ```bash
-# 1. Clone/navigate to project
-cd c:\Users\amiel\OneDrive\Documents\yt-dlp\Music-dlp\2026-2
+# Clone
+git clone https://github.com/MARistheone/Music-DLP.git
+cd Music-DLP
 
-# 2. Create virtual environment
-python -m venv venv
-venv\Scripts\activate  # Windows
-# source venv/bin/activate  # Linux/Mac
-
-# 3. Install dependencies
+# Install Python dependencies
 pip install -r requirements.txt
 
-# 4. Install FFmpeg
-# Download from: https://ffmpeg.org/download.html
-# Add to PATH
-
-# 5. Install Ollama and models
-# Download from: https://ollama.com
-ollama pull gemma3:12b
-ollama pull qwen3:14b
-ollama pull qwen2.5:7b
-
-# 6. Verify installation
-python -c "from core.database import Database; db = Database(); print('Database initialized!')"
+# Run
+python main.py
 ```
 
-## Configuration
+You'll also need:
+- **FFmpeg** installed and in PATH ([download](https://ffmpeg.org/download.html))
+- **Ollama** running locally with at least one model ([download](https://ollama.com/download)):
+  ```
+  ollama pull gemma3:12b
+  ```
+- **YouTube cookies** exported from your browser (see `INSTALL.txt`)
 
-Edit `config.ini` to customize settings:
-
-```ini
-[Appearance]
-theme_mode = dark  # or light, system
-
-[Download]
-format = 251/bestaudio[ext=opus]/bestaudio
-cookies_file =  # Path to cookies.txt (required for downloads)
-
-[AI]
-models = gemma3:12b,qwen3:14b,qwen2.5:7b
-parallel_workers = 3
-
-[Output]
-mp3_enabled = true
-m4a_enabled = true
-mp3_bitrate = 320
-m4a_bitrate = 320
-```
-
-### Cookie Setup (Important!)
-
-To avoid YouTube bot detection:
-
-1. Install "Get cookies.txt LOCALLY" browser extension
-2. Log into YouTube
-3. Export cookies to `cookies.txt`
-4. Set path in `config.ini` under `[Download]` → `cookies_file`
-
-## Usage
-
-**Note**: GUI not yet implemented. Current usage is via Python modules.
-
-```python
-from core.database import Database
-from core.config_manager import ConfigManager
-from core.logger import setup_logger
-
-# Initialize
-logger = setup_logger('music_dlp')
-db = Database()
-config = ConfigManager(db=db)
-
-# Add playlist (example)
-db.add_playlist(
-    playlist_id='PLxxxxxx',
-    title='My Playlist',
-    url='https://youtube.com/playlist?list=PLxxxxxx'
-)
-
-# Get playlists
-playlists = db.get_playlists()
-for playlist in playlists:
-    print(f"{playlist['title']} - {playlist['video_count']} videos")
-```
-
-## Architecture
-
-### Five-Stage Pipeline
+## How It Works
 
 ```
-1. EXTRACT → Extract metadata without downloading
-2. DOWNLOAD → Download .opus files with bot avoidance
-3. AI PROCESS → Generate clean titles with 3 models in parallel
-4. REVIEW → User approves/edits titles in GUI
-5. CONVERT → Convert to MP3/M4A with metadata and thumbnails
+1. Add Playlist    - Paste a YouTube playlist URL
+2. Extract         - Pulls video metadata (no downloading yet)
+3. Download        - Downloads audio as .opus with bot avoidance
+4. AI Process      - Ollama models clean up titles/artists
+5. Review          - You approve, edit, or regenerate AI suggestions
+6. Convert         - FFmpeg converts to MP3 + M4A with embedded metadata
 ```
 
-### Technology Stack
+Output goes to `downloads/final/mp3/` and `downloads/final/m4a/`.
 
-- **Language**: Python 3.10+
-- **GUI**: CustomTkinter
-- **Database**: SQLite 3
-- **Downloader**: yt-dlp
-- **Converter**: FFmpeg
-- **AI**: Ollama (Gemma3:12B, Qwen3:14B, Qwen2.5:7B)
-- **Metadata**: Mutagen
-- **Images**: Pillow
-- **Packaging**: PyInstaller
+## Importing to Spotify
 
-## Project Structure
+1. Open Spotify desktop app > Settings > Local Files
+2. Enable "Show Local Files"
+3. Add the `downloads/final/mp3/` folder as a source
+4. Your songs appear under Local Files with album art
 
-```
-music-dlp/
-├── core/                    # Core infrastructure
-│   ├── database.py         # SQLite manager
-│   ├── config_manager.py   # Configuration
-│   └── logger.py           # Logging
-├── downloaders/             # yt-dlp integration (Phase 2)
-├── ai/                      # AI processing (Phase 3)
-├── converters/              # FFmpeg conversion (Phase 4)
-├── gui/                     # CustomTkinter GUI (Phase 5)
-├── utils/                   # Utilities (Phase 6)
-├── downloads/
-│   ├── raw/                # Downloaded .opus files
-│   └── final/              # Converted MP3/M4A
-├── logs/                    # Application logs
-├── config.ini              # Configuration file
-├── requirements.txt        # Python dependencies
-├── HANDOFF.md             # Development handoff notes
-└── README.md              # This file
-```
+**Note:** Use MP3 files for Spotify. Spotify doesn't display album art on M4A local files.
 
-## Development
-
-### Current Session Status
-
-See `HANDOFF.md` for detailed development handoff notes.
-
-**Last Updated**: 2026-02-08
-**Phase**: 1 of 6 complete
-**Lines of Code**: ~1200
-
-### Next Steps
-
-1. Implement `downloaders/yt_dlp_manager.py`
-2. Implement `downloaders/metadata_extractor.py`
-3. Implement `downloaders/thumbnail_processor.py`
-
-### Testing
+## Building the exe
 
 ```bash
-# Test database
-python -c "from core.database import Database; db = Database(); print('OK')"
-
-# Test config
-python -c "from core.config_manager import ConfigManager; cfg = ConfigManager(); print(cfg.theme_mode)"
-
-# Test logger
-python -c "from core.logger import setup_logger; logger = setup_logger(); logger.info('Test')"
+pip install pyinstaller
+python build_exe.py --clean
 ```
 
-## References
+Output: `dist/MusicDLP/`
 
-- **Implementation Plan**: `C:\Users\amiel\.claude\plans\idempotent-sauteeing-barto.md`
-- **Previous Attempts**: `../2025-11/`, `../2025-10/` (for reference)
-- **Original Requirements**: `../Music-dlp Plan.txt`
+## Tech Stack
+
+| Component | Technology |
+|-----------|-----------|
+| GUI | CustomTkinter |
+| Database | SQLite |
+| Downloader | yt-dlp |
+| Audio conversion | FFmpeg |
+| AI models | Ollama (gemma3:12b recommended) |
+| Metadata | mutagen |
+| Thumbnails | Pillow |
+| Packaging | PyInstaller |
 
 ## License
 
-Personal project for managing music downloads and metadata.
-
-## Credits
-
-- yt-dlp for YouTube downloading
-- Ollama for local AI models
-- FFmpeg for audio conversion
-- CustomTkinter for modern GUI framework
+For personal use.
