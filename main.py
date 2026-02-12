@@ -1,0 +1,220 @@
+"""
+Music DLP - YouTube Playlist Downloader with AI Metadata Cleaning
+
+Main application entry point. Initializes the database, configuration,
+logging, and launches the CustomTkinter GUI.
+
+Author: Music DLP Project
+Version: 1.0.0
+"""
+
+import sys
+import os
+from pathlib import Path
+import subprocess
+
+# Add project root to path for imports
+project_root = Path(__file__).parent
+sys.path.insert(0, str(project_root))
+
+from core.database import Database
+from core.config_manager import ConfigManager
+from core.logger import setup_logger
+from gui.main_window import MainWindow
+
+
+def check_dependencies():
+    """
+    Check that all external dependencies are installed.
+
+    Returns:
+        tuple: (success: bool, missing: list, message: str)
+    """
+    missing = []
+    messages = []
+
+    # Check FFmpeg
+    try:
+        result = subprocess.run(
+            ['ffmpeg', '-version'],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        if result.returncode != 0:
+            missing.append('ffmpeg')
+            messages.append("FFmpeg is installed but not working correctly")
+    except FileNotFoundError:
+        missing.append('ffmpeg')
+        messages.append(
+            "FFmpeg is not installed or not in PATH.\n"
+            "Download from: https://ffmpeg.org/download.html\n"
+            "Make sure to add FFmpeg to your system PATH."
+        )
+    except subprocess.TimeoutExpired:
+        missing.append('ffmpeg')
+        messages.append("FFmpeg check timed out")
+    except Exception as e:
+        missing.append('ffmpeg')
+        messages.append(f"Error checking FFmpeg: {e}")
+
+    # Check Ollama (optional but recommended)
+    try:
+        import requests
+        response = requests.get('http://localhost:11434/api/tags', timeout=2)
+        if response.status_code != 200:
+            messages.append(
+                "Warning: Ollama is not responding.\n"
+                "AI processing will not work.\n"
+                "Install from: https://ollama.com/download"
+            )
+    except requests.exceptions.ConnectionError:
+        messages.append(
+            "Warning: Ollama is not running.\n"
+            "AI processing will not work.\n"
+            "Install from: https://ollama.com/download"
+        )
+    except Exception:
+        pass  # Ollama check is optional
+
+    success = len(missing) == 0
+    message = "\n\n".join(messages) if messages else ""
+
+    return success, missing, message
+
+
+def initialize_app():
+    """
+    Initialize application components.
+
+    Returns:
+        tuple: (db: Database, config: ConfigManager, logger: Logger)
+    """
+    # Setup logger first
+    logger = setup_logger('music_dlp', level='INFO')
+    logger.info("=" * 60)
+    logger.info("Music DLP - Starting Application")
+    logger.info("=" * 60)
+
+    # Initialize database
+    try:
+        db = Database()
+        logger.info(f"Database initialized: {db.db_path}")
+    except Exception as e:
+        logger.error(f"Failed to initialize database: {e}")
+        raise
+
+    # Initialize config manager
+    try:
+        config = ConfigManager(db=db)
+        logger.info("Configuration loaded")
+
+        # Validate configuration
+        errors = config.validate()
+        if errors:
+            logger.warning(f"Configuration validation warnings: {errors}")
+    except Exception as e:
+        logger.error(f"Failed to load configuration: {e}")
+        raise
+
+    # Ensure directories exist
+    try:
+        config.ensure_directories()
+        logger.info("Application directories verified")
+    except Exception as e:
+        logger.error(f"Failed to create directories: {e}")
+        raise
+
+    return db, config, logger
+
+
+def main():
+    """
+    Main application entry point.
+    """
+    try:
+        # Check dependencies
+        success, missing, message = check_dependencies()
+
+        if not success:
+            # Show error dialog if FFmpeg is missing (critical)
+            import tkinter as tk
+            from tkinter import messagebox
+
+            root = tk.Tk()
+            root.withdraw()  # Hide main window
+
+            messagebox.showerror(
+                "Missing Dependencies",
+                f"Required dependencies are missing:\n\n{message}"
+            )
+            root.destroy()
+            return 1
+
+        # Show warnings if any (non-critical)
+        if message:
+            import tkinter as tk
+            from tkinter import messagebox
+
+            root = tk.Tk()
+            root.withdraw()
+            messagebox.showwarning("Setup Warning", message)
+            root.destroy()
+
+        # Initialize app components
+        db, config, logger = initialize_app()
+
+        # Reset any downloads that were interrupted mid-flight last session
+        stale = db.get_videos_by_status('downloading')
+        if stale:
+            logger.info(f"Resetting {len(stale)} interrupted download(s) from previous session")
+            for v in stale:
+                vid = v['video_id']
+                # Remove partial file if it exists
+                raw_path = v.get('file_path_raw')
+                if raw_path and Path(raw_path).exists():
+                    Path(raw_path).unlink()
+                    logger.debug(f"Removed partial file for {vid}")
+                db.update_download_status(vid, 'pending')
+
+        # Reset any conversions that were interrupted mid-flight last session
+        try:
+            cursor = db.conn.cursor()
+            cursor.execute(
+                "SELECT video_id FROM approved_metadata WHERE conversion_status = 'converting'"
+            )
+            stale_conversions = cursor.fetchall()
+            if stale_conversions:
+                logger.info(f"Resetting {len(stale_conversions)} interrupted conversion(s) from previous session")
+                for row in stale_conversions:
+                    db.update_conversion_status(row['video_id'], 'pending')
+        except Exception as e:
+            logger.warning(f"Could not check for stale conversions: {e}")
+
+        logger.info("Launching GUI...")
+
+        # Create and run main window
+        app = MainWindow(db=db, config=config, logger=logger)
+        app.mainloop()
+
+        logger.info("=" * 60)
+        logger.info("Music DLP - Application Closed")
+        logger.info("=" * 60)
+
+        # Cleanup
+        db.close()
+
+        return 0
+
+    except KeyboardInterrupt:
+        print("\nApplication interrupted by user")
+        return 130
+    except Exception as e:
+        print(f"Fatal error: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+        return 1
+
+
+if __name__ == '__main__':
+    sys.exit(main())
