@@ -13,14 +13,42 @@ import os
 from pathlib import Path
 import subprocess
 
-# Add project root to path for imports
-project_root = Path(__file__).parent
-sys.path.insert(0, str(project_root))
+
+def get_app_dir() -> Path:
+    """Get the application's base directory.
+
+    When running from source: the directory containing main.py
+    When running as frozen exe (PyInstaller --onedir): the directory containing the .exe
+    """
+    if getattr(sys, 'frozen', False):
+        return Path(sys.executable).parent
+    else:
+        return Path(__file__).parent
+
+
+# Set working directory to app dir so all relative paths resolve correctly
+app_dir = get_app_dir()
+os.chdir(app_dir)
+
+# Add project root to path for imports (needed when running from source)
+sys.path.insert(0, str(app_dir))
 
 from core.database import Database
 from core.config_manager import ConfigManager
 from core.logger import setup_logger
 from gui.main_window import MainWindow
+
+
+def _setup_ffmpeg_path():
+    """Add app-adjacent FFmpeg directories to PATH if ffmpeg.exe is found there."""
+    import shutil
+    for candidate in [app_dir / 'ffmpeg.exe', app_dir / 'ffmpeg' / 'ffmpeg.exe']:
+        if candidate.exists():
+            ffmpeg_dir = str(candidate.parent)
+            if ffmpeg_dir not in os.environ.get('PATH', ''):
+                os.environ['PATH'] = ffmpeg_dir + os.pathsep + os.environ.get('PATH', '')
+            return
+    # Fall through to system PATH - shutil.which will handle it
 
 
 def check_dependencies():
@@ -33,7 +61,9 @@ def check_dependencies():
     missing = []
     messages = []
 
-    # Check FFmpeg
+    # Check FFmpeg - look in app-adjacent dirs first, then PATH
+    _setup_ffmpeg_path()
+
     try:
         result = subprocess.run(
             ['ffmpeg', '-version'],
@@ -47,9 +77,11 @@ def check_dependencies():
     except FileNotFoundError:
         missing.append('ffmpeg')
         messages.append(
-            "FFmpeg is not installed or not in PATH.\n"
-            "Download from: https://ffmpeg.org/download.html\n"
-            "Make sure to add FFmpeg to your system PATH."
+            "FFmpeg not found. Please either:\n"
+            "1. Place ffmpeg.exe next to MusicDLP.exe\n"
+            "2. Place it in a 'ffmpeg' subfolder\n"
+            "3. Install FFmpeg and add to system PATH\n\n"
+            "Download from: https://ffmpeg.org/download.html"
         )
     except subprocess.TimeoutExpired:
         missing.append('ffmpeg')
@@ -210,9 +242,34 @@ def main():
         print("\nApplication interrupted by user")
         return 130
     except Exception as e:
-        print(f"Fatal error: {e}", file=sys.stderr)
         import traceback
+        tb = traceback.format_exc()
+        print(f"Fatal error: {e}", file=sys.stderr)
         traceback.print_exc()
+
+        # When frozen with no console, write crash log and show dialog
+        if getattr(sys, 'frozen', False):
+            try:
+                crash_log = app_dir / 'crash.log'
+                crash_log.write_text(
+                    f"Music DLP Crash Report\n{'='*60}\n{tb}",
+                    encoding='utf-8'
+                )
+            except Exception:
+                pass
+            try:
+                import tkinter as tk
+                from tkinter import messagebox
+                root = tk.Tk()
+                root.withdraw()
+                messagebox.showerror(
+                    "Music DLP - Fatal Error",
+                    f"Application crashed:\n{e}\n\nSee crash.log for details."
+                )
+                root.destroy()
+            except Exception:
+                pass
+
         return 1
 
 

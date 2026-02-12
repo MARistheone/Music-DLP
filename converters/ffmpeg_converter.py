@@ -23,6 +23,8 @@ Usage:
 
 import subprocess
 import shutil
+import sys
+import os
 import json
 import re
 from pathlib import Path
@@ -86,19 +88,36 @@ class FFmpegConverter:
 
     def _check_ffmpeg(self) -> None:
         """
-        Check if FFmpeg is available in PATH.
+        Check if FFmpeg is available (app-adjacent dirs first, then PATH).
 
         Raises:
             RuntimeError: If FFmpeg is not found
         """
-        if not shutil.which('ffmpeg'):
-            raise RuntimeError(
-                "FFmpeg not found in PATH. Please install FFmpeg:\n"
-                "  Windows: https://ffmpeg.org/download.html#build-windows\n"
-                "  macOS: brew install ffmpeg\n"
-                "  Linux: sudo apt install ffmpeg"
-            )
-        self.logger.debug("FFmpeg found in PATH")
+        # Check app-adjacent directories for portable FFmpeg
+        if getattr(sys, 'frozen', False):
+            base_dir = Path(sys.executable).parent
+        else:
+            base_dir = Path.cwd()
+
+        for candidate in [base_dir / 'ffmpeg.exe', base_dir / 'ffmpeg' / 'ffmpeg.exe']:
+            if candidate.exists():
+                ffmpeg_dir = str(candidate.parent)
+                if ffmpeg_dir not in os.environ.get('PATH', ''):
+                    os.environ['PATH'] = ffmpeg_dir + os.pathsep + os.environ.get('PATH', '')
+                self.logger.debug(f"FFmpeg found at: {candidate}")
+                return
+
+        if shutil.which('ffmpeg'):
+            self.logger.debug("FFmpeg found in system PATH")
+            return
+
+        raise RuntimeError(
+            "FFmpeg not found. Please either:\n"
+            "1. Place ffmpeg.exe next to MusicDLP.exe\n"
+            "2. Place it in a 'ffmpeg' subfolder\n"
+            "3. Install FFmpeg and add to system PATH\n\n"
+            "Download from: https://ffmpeg.org/download.html"
+        )
 
     def _sanitize_filename(self, filename: str) -> str:
         """
